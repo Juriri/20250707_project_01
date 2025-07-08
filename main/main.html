@@ -32,7 +32,7 @@
       </button>
       <h2 class="text-center mb-4">신규 등록 상품</h2>
 
-      <form class="row g-3 mb-4">
+      <form class="row g-3 mb-4" id="search_form">
         <div class="col-md-2">
           <select class="form-select" id="gender_select" name="gender">
             <option value="">전체 선택</option>
@@ -113,14 +113,15 @@
       const items_per_page = 12;
       let current_page = 1;
       let products = [];
+      let filtered_products = [];
 
       /* 상품 카드 형식 구현 함수 시작 */
-      function render_products(page) {
+      function render_products(page, data = filtered_products) {
         product_data_Table.innerHTML = "";
         const start_index = (page - 1) * items_per_page;
         const end_index = start_index + items_per_page;
 
-        products.slice(start_index, end_index).forEach((item) => {
+        data.slice(start_index, end_index).forEach((item) => {
           const image_src = item.image?.trim()
             ? item.image
             : "./images/no_image.png";
@@ -130,11 +131,12 @@
               <div class="card shadow-sm rounded">
                 <img src="${image_src}" onerror="this.onerror=null; this.src='./images/no_image.png';" class="card-img-top" alt="${item.product}">
                 <div class="card-body px-2">
-                  <p class="card-brand">${item.brand}</p>
                   <div class="d-flex gender-category-row">
                     <span class="card-gender">${item.gender}</span>
                     <span class="card-category">${item.category}</span>
                   </div>
+                  <p class="card-brand">${item.brand}</p>
+                  <p class="card-product">${item.product}</p>
                   <p class="card-price">${item.price}원</p>
                 </div>
               </div>
@@ -146,7 +148,7 @@
       /* 상품 카드 형식 구현 함수 종료 */
 
       /* 페이지네이션 구현 함수 시작 */
-      function render_pagination(total_items) {
+      function render_pagination(total_items, data = filtered_products) {
         pagination.innerHTML = "";
         const page_count = Math.ceil(total_items / items_per_page);
 
@@ -162,8 +164,8 @@
           create_button("이전", current_page === 1, (e) => {
             e.preventDefault();
             current_page--;
-            render_products(current_page);
-            render_pagination(total_items);
+            render_products(current_page, data);
+            render_pagination(data.length, data);
           })
         );
 
@@ -174,8 +176,8 @@
           li.addEventListener("click", (e) => {
             e.preventDefault();
             current_page = i;
-            render_products(current_page);
-            render_pagination(total_items);
+            render_products(current_page, data);
+            render_pagination(data.length, data);
           });
           pagination.appendChild(li);
         }
@@ -184,8 +186,8 @@
           create_button("다음", current_page === page_count, (e) => {
             e.preventDefault();
             current_page++;
-            render_products(current_page);
-            render_pagination(total_items);
+            render_products(current_page, data);
+            render_pagination(data.length, data);
           })
         );
       }
@@ -218,10 +220,34 @@
           : "Dark Mode";
       });
 
+      /* 상품 필터링 구현 시작 */
+      document
+        .getElementById("search_form")
+        .addEventListener("submit", function (e) {
+          e.preventDefault();
+
+          const gender = document.getElementById("gender_select").value;
+          const category = document.getElementById("category_select").value;
+          const brand = document.getElementById("brand_input").value.trim();
+
+          filtered_products = products.filter((item) => {
+            const match_gender = gender === "" || item.gender === gender;
+            const match_catgory = category === "" || item.category === category;
+            const match_brand = brand === "" || item.brand.includes(brand);
+            return match_gender && match_catgory && match_brand;
+          });
+
+          current_page = 1;
+          render_products(current_page, filtered_products);
+          render_pagination(filtered_products.length, filtered_products);
+        });
+      /* 상품 필터링 구현 종료 */
+
       fetch("./product_data.json")
         .then((response) => response.json())
         .then((data) => {
           products = data;
+          filtered_products = data;
           render_products(current_page);
           render_pagination(products.length);
         });
